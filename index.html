@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
-    <title>TurboWarp Mini Paint Perfeito</title>
+    <title>iframe turbowarp paint</title>
     <style>
         body {
             font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -43,13 +43,13 @@
             grid-template-columns: repeat(16, 18px);
             grid-template-rows: repeat(16, 18px);
             gap: 1px;
-            background-color: #d3d3d3; /* Linhas do grid cinza claro */
+            background-color: #d3d3d3; 
             border: 2px solid #d3d3d3;
         }
         .pixel {
             width: 18px;
             height: 18px;
-            background-color: #ffffff; /* Fundo visível normal e limpo na página */
+            background-color: #ffffff; 
             cursor: pointer;
             user-select: none;
         }
@@ -62,13 +62,12 @@
     <div class="controls">
         <label for="colorPicker">Cor: </label>
         <input type="color" id="colorPicker" value="#000000">
-        <button id="clearBtn">Limpar Tudo</button>
+        <button id="clearBtn">Erase</button>
     </div>
 
-    <!-- Grid de Pintura -->
+
     <div id="grid"></div>
 
-    <!-- Canvas HD para gerar a imagem que vai pro TurboWarp -->
     <canvas id="hdCanvas" width="256" height="256" style="display:none;"></canvas>
 
     <script>
@@ -80,18 +79,18 @@
 
         ctx.imageSmoothingEnabled = false;
 
-        // Monta o grid 16x16 normal
+
         for (let i = 0; i < 256; i++) {
             const pixel = document.createElement('div');
             pixel.classList.add('pixel');
             
-            // Atributo interno para controlar se o pixel está pintado ou é "ar"
+
             pixel.dataset.painted = "false";
             
             pixel.addEventListener('click', () => {
                 const currentColor = colorPicker.value;
                 
-                // Se o pixel já estiver marcado como pintado, remove a cor e vira "ar"
+
                 if (pixel.dataset.painted === "true") {
                     pixel.style.backgroundColor = '#ffffff';
                     pixel.dataset.painted = "false";
@@ -106,7 +105,7 @@
             grid.appendChild(pixel);
         }
 
-        // Botão para limpar a tela (tudo vira branco visualmente, mas vira "ar" pro TurboWarp)
+
         clearBtn.addEventListener('click', () => {
             document.querySelectorAll('.pixel').forEach(p => {
                 p.style.backgroundColor = '#ffffff';
@@ -115,33 +114,33 @@
             sendImageToTurboWarp();
         });
 
-        // Desenha no canvas e envia
+
         function sendImageToTurboWarp() {
             const pixels = document.querySelectorAll('.pixel');
             const blockSize = 16; 
 
-            // Limpa COMPLETAMENTE o canvas antes de desenhar (garante transparência nativa no PNG)
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             pixels.forEach((pixel, index) => {
                 const x = (index % 16) * blockSize;
                 const y = Math.floor(index / 16) * blockSize;
                 
-                // SÓ desenha no canvas se o pixel estiver marcado como pintado. Se for "false", o canvas continua invisível ali.
+
                 if (pixel.dataset.painted === "true") {
                     ctx.fillStyle = pixel.style.backgroundColor;
                     ctx.fillRect(x, y, blockSize, blockSize);
                 }
             });
 
-            // O formato PNG gerado vai conter apenas os blocos pintados por você
+
             const dataURI = canvas.toDataURL('image/png');
             
-            // Envia limpo para o TurboWarp
+
             window.parent.postMessage(dataURI, "*");
         }
 
-        // Envia o estado em branco inicial ao carregar a página
+
         sendImageToTurboWarp();
     </script>
 </body>
