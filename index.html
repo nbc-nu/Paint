@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Paint 16x16 HD para TurboWarp</title>
+    <title>Mini Paint 16x16 TurboWarp</title>
     <style>
         body {
             font-family: sans-serif;
@@ -32,7 +32,7 @@
         .pixel {
             width: 24px;
             height: 24px;
-            background-color: #ffffff; /* Fundo branco */
+            background-color: #ffffff; /* Fundo branco por padrão */
             cursor: pointer;
             user-select: none;
         }
@@ -49,8 +49,8 @@
     <!-- Grid de Pintura -->
     <div id="grid"></div>
 
-    <!-- Canvas em Alta Definição (512x512) para evitar borrões no TurboWarp -->
-    <canvas id="hdCanvas" width="512" height="512" style="display:none;"></canvas>
+    <!-- Canvas HD para gerar o PNG limpo e nítido que o TurboWarp lê -->
+    <canvas id="hdCanvas" width="256" height="256" style="display:none;"></canvas>
 
     <script>
         const grid = document.getElementById('grid');
@@ -59,24 +59,36 @@
         const canvas = document.getElementById('hdCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Configura o canvas para manter as bordas dos pixels perfeitamente nítidas (Pixel Art)
+        // Garante que o desenho mantenha bordas duras (Pixel Art nítida)
         ctx.imageSmoothingEnabled = false;
 
-        // Inicializa a estrutura do localStorage se não existir
-        if (!localStorage.getItem('Image')) {
-            localStorage.setItem('Image', JSON.stringify({ color: "#000000", image: "" }));
+        // Configuração de escrita direta adaptada ao Namespace 'Image' do TurboWarp
+        const NAMESPACE = "Image";
+
+        function setTurboWarpKey(key, value) {
+            // A extensão do TurboWarp estrutura as chaves adicionando o prefixo do namespace
+            const storageKey = `${NAMESPACE}:${key}`;
+            localStorage.setItem(storageKey, value);
         }
 
-        let storageData = JSON.parse(localStorage.getItem('Image'));
-        colorPicker.value = storageData.color;
+        function getTurboWarpKey(key) {
+            const storageKey = `${NAMESPACE}:${key}`;
+            return localStorage.getItem(storageKey);
+        }
 
-        // Atualiza a cor no LocalStorage
+        // Inicializa valores se estiverem vazios
+        if (!getTurboWarpKey('color')) setTurboWarpKey('color', '#000000');
+        if (!getTurboWarpKey('image')) setTurboWarpKey('image', '');
+
+        // Define a cor inicial salva
+        colorPicker.value = getTurboWarpKey('color') || '#000000';
+
+        // Escuta mudanças de cor
         colorPicker.addEventListener('input', (e) => {
-            storageData.color = e.target.value;
-            saveToStorage();
+            setTurboWarpKey('color', e.target.value);
         });
 
-        // Cria os 256 blocos do grid
+        // Monta visualmente o grid 16x16
         for (let i = 0; i < 256; i++) {
             const pixel = document.createElement('div');
             pixel.classList.add('pixel');
@@ -84,6 +96,7 @@
             pixel.addEventListener('click', () => {
                 const currentColor = colorPicker.value;
                 
+                // Sistema de alternar cor (Clique de remoção volta para branco)
                 if (pixel.style.backgroundColor === hexToRgb(currentColor)) {
                     pixel.style.backgroundColor = '#ffffff';
                 } else {
@@ -96,33 +109,33 @@
             grid.appendChild(pixel);
         }
 
+        // Botão para limpar a tela
         clearBtn.addEventListener('click', () => {
             document.querySelectorAll('.pixel').forEach(p => p.style.backgroundColor = '#ffffff');
             updateImageURI();
         });
 
-        // Desenha a imagem em alta resolução e injeta no LocalStorage
+        // Desenha os blocos em alta definição e gera o Data URI em PNG
         function updateImageURI() {
             const pixels = document.querySelectorAll('.pixel');
-            const pixelSize = 32; // Cada pixel do grid vai ocupar um bloco de 32x32 pixels reais no canvas
+            const blockSize = 16; // 16x16 blocos em um canvas de 256x256 resulta em pixel art nítida
 
             pixels.forEach((pixel, index) => {
-                const x = (index % 16) * pixelSize;
-                const y = Math.floor(index / 16) * pixelSize;
+                const x = (index % 16) * blockSize;
+                const y = Math.floor(index / 16) * blockSize;
                 
                 ctx.fillStyle = pixel.style.backgroundColor || '#ffffff';
-                ctx.fillRect(x, y, pixelSize, pixelSize);
+                ctx.fillRect(x, y, blockSize, blockSize);
             });
 
-            // Gera o Data URI em alta definição
-            storageData.image = canvas.toDataURL('image/png');
-            saveToStorage();
+            // Extrai como um Data URL padrão PNG aceito de forma nativa pelo TurboWarp
+            const dataURI = canvas.toDataURL('image/png');
+            
+            // Salva na chave 'image' dentro do escopo do namespace 'Image'
+            setTurboWarpKey('image', dataURI);
         }
 
-        function saveToStorage() {
-            localStorage.setItem('Image', JSON.stringify(storageData));
-        }
-
+        // Funções auxiliares para conversão de cores no clique
         function hexToRgb(hex) {
             const r = parseInt(hex.slice(1, 3), 16);
             const g = parseInt(hex.slice(3, 5), 16);
@@ -130,7 +143,7 @@
             return `rgb(${r}, ${g}, ${b})`;
         }
 
-        // Execução inicial
+        // Execução inicial para criar a imagem vazia na inicialização
         updateImageURI();
     </script>
 </body>
