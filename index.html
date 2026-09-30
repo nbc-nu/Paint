@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mini Paint 16x16</title>
+    <style>
+      body {
+        margin: 0;
+        background-color: #ffffff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        gap: 15px;
+      }
+      #grid {
+        display: grid;
+        grid-template-columns: repeat(16, 20px);
+        grid-template-rows: repeat(16, 20px);
+        border: 1px solid #ccc;
+        width: 320px;
+        height: 320px;
+        background-color: #ffffff;
+      }
+      .pixel {
+        width: 20px;
+        height: 20px;
+        box-sizing: border-box;
+        border-right: 1px solid #e0e0e0;
+        border-bottom: 1px solid #e0e0e0;
+        cursor: pointer;
+        background-color: #ffffff;
+      }
+      .pixel:nth-child(16n) { border-right: none; }
+      .pixel:nth-child(n + 241) { border-bottom: none; }
+    </style>
+  </head>
+  <body>
+
+    <div>
+      <input type="color" id="colorPicker" value="#140000" />
+    </div>
+
+    <div id="grid"></div>
+
+    <button id="saveButton">Salvar</button>
+
+    <script>
+      const grid = document.getElementById("grid");
+      const colorPicker = document.getElementById("colorPicker");
+      const saveButton = document.getElementById("saveButton");
+
+      const hiddenCanvas = document.createElement("canvas");
+      hiddenCanvas.width = 16;
+      hiddenCanvas.height = 16;
+      const ctx = hiddenCanvas.getContext("2d");
+
+      let pixelState = Array(256).fill("#ffffff");
+
+      function saveToStorage() {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, 16, 16);
+
+        for (let i = 0; i < 256; i++) {
+          const x = i % 16;
+          const y = Math.floor(i / 16);
+          ctx.fillStyle = pixelState[i];
+          ctx.fillRect(x, y, 1, 1);
+        }
+
+        const currentHexColor = colorPicker.value;
+        const currentDataURI = hiddenCanvas.toDataURL("image/png");
+
+        // Salva exatamente no formato Namespace:Chave e Namespace_Chave para o TurboWarp ler
+        localStorage.setItem("Image:color", currentHexColor);
+        localStorage.setItem("Image:URI", currentDataURI);
+        localStorage.setItem("Image_color", currentHexColor);
+        localStorage.setItem("Image_URI", currentDataURI);
+
+        // Alerta visual rápido no botão
+        const originalText = saveButton.textContent;
+        saveButton.textContent = "Salvo!";
+        setTimeout(() => { saveButton.textContent = originalText; }, 800);
+      }
+
+      saveButton.addEventListener("click", saveToStorage);
+
+      for (let i = 0; i < 256; i++) {
+        const pixel = document.createElement("div");
+        pixel.classList.add("pixel");
+
+        pixel.addEventListener("click", () => {
+          const currentPaintColor = colorPicker.value;
+          if (pixelState[i].toLowerCase() === currentPaintColor.toLowerCase()) {
+            pixelState[i] = "#ffffff";
+            pixel.style.backgroundColor = "#ffffff";
+          } else {
+            pixelState[i] = currentPaintColor;
+            pixel.style.backgroundColor = currentPaintColor;
+          }
+        });
+
+        grid.appendChild(pixel);
+      }
+
+      // Inicializa limpo
+      saveToStorage();
+    </script>
+  </body>
+</html>
