@@ -1,112 +1,154 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mini Paint 16x16</title>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Paint 16x16 para TurboWarp</title>
     <style>
-      body {
-        margin: 0;
-        background-color: #ffffff;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100vh;
-        gap: 15px;
-      }
-      #grid {
-        display: grid;
-        grid-template-columns: repeat(16, 20px);
-        grid-template-rows: repeat(16, 20px);
-        border: 1px solid #ccc;
-        width: 320px;
-        height: 320px;
-        background-color: #ffffff;
-      }
-      .pixel {
-        width: 20px;
-        height: 20px;
-        box-sizing: border-box;
-        border-right: 1px solid #e0e0e0;
-        border-bottom: 1px solid #e0e0e0;
-        cursor: pointer;
-        background-color: #ffffff;
-      }
-      .pixel:nth-child(16n) { border-right: none; }
-      .pixel:nth-child(n + 241) { border-bottom: none; }
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        .controls {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(16, 20px);
+            grid-template-rows: repeat(16, 20px);
+            gap: 1px;
+            background-color: #d3d3d3; /* Grid cinza claro */
+            border: 2px solid #d3d3d3;
+        }
+        .pixel {
+            width: 20px;
+            height: 20px;
+            background-color: #ffffff; /* Fundo branco */
+            cursor: pointer;
+            user-select: none;
+        }
+        textarea {
+            margin-top: 15px;
+            width: 335px;
+            height: 60px;
+            font-size: 11px;
+            word-break: break-all;
+        }
     </style>
-  </head>
-  <body>
+</head>
+<body>
 
-    <div>
-      <input type="color" id="colorPicker" value="#140000" />
+    <div class="controls">
+        <label for="colorPicker">Cor: </label>
+        <input type="color" id="colorPicker" value="#000000">
+        <button id="clearBtn">Limpar Tudo</button>
     </div>
 
+    <!-- Grid de Pintura -->
     <div id="grid"></div>
 
-    <button id="saveButton">Salvar</button>
+    <!-- Output do Data URI para visualização rápida -->
+    <textarea id="uriOutput" readonly placeholder="O Data URI aparecerá aqui..."></textarea>
+
+    <!-- Canvas oculto usado exclusivamente para gerar o PNG real de 16x16 pixels -->
+    <canvas id="hiddenCanvas" width="16" height="16" style="display:none;"></canvas>
 
     <script>
-      const grid = document.getElementById("grid");
-      const colorPicker = document.getElementById("colorPicker");
-      const saveButton = document.getElementById("saveButton");
+        const grid = document.getElementById('grid');
+        const colorPicker = document.getElementById('colorPicker');
+        const clearBtn = document.getElementById('clearBtn');
+        const uriOutput = document.getElementById('uriOutput');
+        const canvas = document.getElementById('hiddenCanvas');
+        const ctx = canvas.getContext('2d');
 
-      const hiddenCanvas = document.createElement("canvas");
-      hiddenCanvas.width = 16;
-      hiddenCanvas.height = 16;
-      const ctx = hiddenCanvas.getContext("2d");
-
-      let pixelState = Array(256).fill("#ffffff");
-
-      function saveToStorage() {
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, 16, 16);
-
-        for (let i = 0; i < 256; i++) {
-          const x = i % 16;
-          const y = Math.floor(i / 16);
-          ctx.fillStyle = pixelState[i];
-          ctx.fillRect(x, y, 1, 1);
+        // Inicializa a estrutura do localStorage['Image'] se não existir
+        if (!localStorage.getItem('Image')) {
+            localStorage.setItem('Image', JSON.stringify({ color: "#000000", image: "" }));
         }
 
-        const currentHexColor = colorPicker.value;
-        const currentDataURI = hiddenCanvas.toDataURL("image/png");
+        // Recupera o estado inicial guardado
+        let storageData = JSON.parse(localStorage.getItem('Image'));
+        colorPicker.value = storageData.color;
 
-        // Salva exatamente no formato Namespace:Chave e Namespace_Chave para o TurboWarp ler
-        localStorage.setItem("Image:color", currentHexColor);
-        localStorage.setItem("Image:URI", currentDataURI);
-        localStorage.setItem("Image_color", currentHexColor);
-        localStorage.setItem("Image_URI", currentDataURI);
-
-        // Alerta visual rápido no botão
-        const originalText = saveButton.textContent;
-        saveButton.textContent = "Salvo!";
-        setTimeout(() => { saveButton.textContent = originalText; }, 800);
-      }
-
-      saveButton.addEventListener("click", saveToStorage);
-
-      for (let i = 0; i < 256; i++) {
-        const pixel = document.createElement("div");
-        pixel.classList.add("pixel");
-
-        pixel.addEventListener("click", () => {
-          const currentPaintColor = colorPicker.value;
-          if (pixelState[i].toLowerCase() === currentPaintColor.toLowerCase()) {
-            pixelState[i] = "#ffffff";
-            pixel.style.backgroundColor = "#ffffff";
-          } else {
-            pixelState[i] = currentPaintColor;
-            pixel.style.backgroundColor = currentPaintColor;
-          }
+        // Atualiza a cor no LocalStorage sempre que o usuário mudar o seletor
+        colorPicker.addEventListener('input', (e) => {
+            storageData.color = e.target.value;
+            saveToStorage();
         });
 
-        grid.appendChild(pixel);
-      }
+        // Cria a matriz de pixels na tela (16x16 = 256 pixels)
+        for (let i = 0; i < 256; i++) {
+            const pixel = document.createElement('div');
+            pixel.classList.add('pixel');
+            
+            // Evento de clique para pintar / despintar
+            pixel.addEventListener('click', () => {
+                const currentColor = colorPicker.value;
+                
+                // Se já estiver pintado com a cor atual, remove (volta a ser branco)
+                if (pixel.style.backgroundColor === hexToRgb(currentColor)) {
+                    pixel.style.backgroundColor = '#ffffff';
+                } else {
+                    pixel.style.backgroundColor = currentColor;
+                }
+                
+                updateImageURI();
+            });
 
-      // Inicializa limpo
-      saveToStorage();
+            grid.appendChild(pixel);
+        }
+
+        // Limpa a tela inteira voltando para o branco
+        clearBtn.addEventListener('click', () => {
+            document.querySelectorAll('.pixel').forEach(p => p.style.backgroundColor = '#ffffff');
+            updateImageURI();
+        });
+
+        // Desenha os pixels atuais no canvas de 16x16 e gera o Data URI em formato PNG
+        function updateImageURI() {
+            const pixels = document.querySelectorAll('.pixel');
+            
+            pixels.forEach((pixel, index) => {
+                const x = index % 16;
+                const y = Math.floor(index / 16);
+                
+                // Pega a cor de fundo do elemento visual
+                ctx.fillStyle = pixel.style.backgroundColor || '#ffffff';
+                ctx.fillRect(x, y, 1, 1);
+            });
+
+            // O formato PNG garante que o TurboWarp consiga importar a imagem perfeitamente
+            const dataURI = canvas.toDataURL('image/png');
+            uriOutput.value = dataURI;
+
+            // Grava os dados atualizados no formato JSON stringizado esperado
+            storageData.image = dataURI;
+            saveToStorage();
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('Image', JSON.stringify(storageData));
+        }
+
+        // Helper: Converte HEX (#000000) para RGB (rgb(0, 0, 0)) para validação correta do clique
+        function hexToRgb(hex) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        // Gera o URI em branco inicial
+        updateImageURI();
     </script>
-  </body>
+</body>
 </html>
