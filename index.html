@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Paint 16x16 para TurboWarp</title>
+    <title>Mini Paint 16x16 HD para TurboWarp</title>
     <style>
         body {
             font-family: sans-serif;
@@ -23,25 +23,18 @@
         }
         #grid {
             display: grid;
-            grid-template-columns: repeat(16, 20px);
-            grid-template-rows: repeat(16, 20px);
+            grid-template-columns: repeat(16, 24px);
+            grid-template-rows: repeat(16, 24px);
             gap: 1px;
-            background-color: #d3d3d3; /* Grid cinza claro */
+            background-color: #d3d3d3; /* Linhas do grid cinza claro */
             border: 2px solid #d3d3d3;
         }
         .pixel {
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
             background-color: #ffffff; /* Fundo branco */
             cursor: pointer;
             user-select: none;
-        }
-        textarea {
-            margin-top: 15px;
-            width: 335px;
-            height: 60px;
-            font-size: 11px;
-            word-break: break-all;
         }
     </style>
 </head>
@@ -56,45 +49,41 @@
     <!-- Grid de Pintura -->
     <div id="grid"></div>
 
-    <!-- Output do Data URI para visualização rápida -->
-    <textarea id="uriOutput" readonly placeholder="O Data URI aparecerá aqui..."></textarea>
-
-    <!-- Canvas oculto usado exclusivamente para gerar o PNG real de 16x16 pixels -->
-    <canvas id="hiddenCanvas" width="16" height="16" style="display:none;"></canvas>
+    <!-- Canvas em Alta Definição (512x512) para evitar borrões no TurboWarp -->
+    <canvas id="hdCanvas" width="512" height="512" style="display:none;"></canvas>
 
     <script>
         const grid = document.getElementById('grid');
         const colorPicker = document.getElementById('colorPicker');
         const clearBtn = document.getElementById('clearBtn');
-        const uriOutput = document.getElementById('uriOutput');
-        const canvas = document.getElementById('hiddenCanvas');
+        const canvas = document.getElementById('hdCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Inicializa a estrutura do localStorage['Image'] se não existir
+        // Configura o canvas para manter as bordas dos pixels perfeitamente nítidas (Pixel Art)
+        ctx.imageSmoothingEnabled = false;
+
+        // Inicializa a estrutura do localStorage se não existir
         if (!localStorage.getItem('Image')) {
             localStorage.setItem('Image', JSON.stringify({ color: "#000000", image: "" }));
         }
 
-        // Recupera o estado inicial guardado
         let storageData = JSON.parse(localStorage.getItem('Image'));
         colorPicker.value = storageData.color;
 
-        // Atualiza a cor no LocalStorage sempre que o usuário mudar o seletor
+        // Atualiza a cor no LocalStorage
         colorPicker.addEventListener('input', (e) => {
             storageData.color = e.target.value;
             saveToStorage();
         });
 
-        // Cria a matriz de pixels na tela (16x16 = 256 pixels)
+        // Cria os 256 blocos do grid
         for (let i = 0; i < 256; i++) {
             const pixel = document.createElement('div');
             pixel.classList.add('pixel');
             
-            // Evento de clique para pintar / despintar
             pixel.addEventListener('click', () => {
                 const currentColor = colorPicker.value;
                 
-                // Se já estiver pintado com a cor atual, remove (volta a ser branco)
                 if (pixel.style.backgroundColor === hexToRgb(currentColor)) {
                     pixel.style.backgroundColor = '#ffffff';
                 } else {
@@ -107,31 +96,26 @@
             grid.appendChild(pixel);
         }
 
-        // Limpa a tela inteira voltando para o branco
         clearBtn.addEventListener('click', () => {
             document.querySelectorAll('.pixel').forEach(p => p.style.backgroundColor = '#ffffff');
             updateImageURI();
         });
 
-        // Desenha os pixels atuais no canvas de 16x16 e gera o Data URI em formato PNG
+        // Desenha a imagem em alta resolução e injeta no LocalStorage
         function updateImageURI() {
             const pixels = document.querySelectorAll('.pixel');
-            
+            const pixelSize = 32; // Cada pixel do grid vai ocupar um bloco de 32x32 pixels reais no canvas
+
             pixels.forEach((pixel, index) => {
-                const x = index % 16;
-                const y = Math.floor(index / 16);
+                const x = (index % 16) * pixelSize;
+                const y = Math.floor(index / 16) * pixelSize;
                 
-                // Pega a cor de fundo do elemento visual
                 ctx.fillStyle = pixel.style.backgroundColor || '#ffffff';
-                ctx.fillRect(x, y, 1, 1);
+                ctx.fillRect(x, y, pixelSize, pixelSize);
             });
 
-            // O formato PNG garante que o TurboWarp consiga importar a imagem perfeitamente
-            const dataURI = canvas.toDataURL('image/png');
-            uriOutput.value = dataURI;
-
-            // Grava os dados atualizados no formato JSON stringizado esperado
-            storageData.image = dataURI;
+            // Gera o Data URI em alta definição
+            storageData.image = canvas.toDataURL('image/png');
             saveToStorage();
         }
 
@@ -139,7 +123,6 @@
             localStorage.setItem('Image', JSON.stringify(storageData));
         }
 
-        // Helper: Converte HEX (#000000) para RGB (rgb(0, 0, 0)) para validação correta do clique
         function hexToRgb(hex) {
             const r = parseInt(hex.slice(1, 3), 16);
             const g = parseInt(hex.slice(3, 5), 16);
@@ -147,7 +130,7 @@
             return `rgb(${r}, ${g}, ${b})`;
         }
 
-        // Gera o URI em branco inicial
+        // Execução inicial
         updateImageURI();
     </script>
 </body>
